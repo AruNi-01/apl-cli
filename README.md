@@ -1,4 +1,4 @@
-# apl — Apollo Configuration Center CLI
+# APL-CLI — Apollo Configuration Center CLI
 
 针对 AI Coding 场景设计的 Apollo 配置中心命令行工具。让 AI Agent 能在编码过程中直接读取和管理 Apollo 动态配置，不再只能依赖默认值/空值来分析代码。
 
@@ -91,6 +91,7 @@ apl get application timeout
 | `apl set <ns> <key> <value>` | 创建或修改配置                    |
 | `apl delete <ns> <key>`      | 删除配置                       |
 | `apl publish <ns>`           | 发布 Namespace 变更            |
+| `apl upgrade`                | 升级到最新版本                   |
 
 
 ## 读取配置
@@ -189,9 +190,25 @@ apl init --portal-url "..." --token "..." --app-id "..." --qps 5
 
 当请求频率超过限制时，CLI 会自动等待至下一个可用时间窗口再发送请求，无需用户干预。
 
+## 自动更新
+
+运行任何命令时，apl 会每 24 小时检查一次 GitHub Release，发现新版本会在命令输出后提示：
+
+```
+New version available: 0.2.0 -> 0.3.0 (run apl upgrade to upgrade)
+```
+
+执行升级：
+
+```bash
+apl upgrade
+```
+
+会自动下载对应平台的最新二进制并替换当前可执行文件。
+
 ## AI Agent 集成
 
-配套 Skill 安装后位于 `~/.cursor/skills/apl-cli/SKILL.md`，AI Agent 会在以下场景自动使用：
+配套 Skill 安装后位于 `~/.agents/skills/apl-cli/SKILL.md`，AI Agent 会在以下场景自动使用：
 
 - 代码中遇到 `@Value("${...}")` 或 `@ApolloJsonValue` 需要实际值
 - 用户询问 Apollo 配置或动态配置
@@ -236,6 +253,6 @@ apl-cli/
     ├── client.rs       # Apollo Open API HTTP 客户端
     ├── models.rs       # API 请求/响应模型
     ├── output.rs       # 输出格式化（text 表格 / json）
+    ├── upgrade.rs      # 版本检查与自动升级
     └── commands.rs     # 所有命令实现
 ```
-
