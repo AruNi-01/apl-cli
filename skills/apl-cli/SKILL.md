@@ -1,6 +1,6 @@
 ---
 name: apl-cli
-version: 0.2.0
+version: 0.2.1
 description: Query, read, and modify Apollo configuration center values using the apl CLI. Use when code references @ApolloJsonValue, @ApolloConfig, @EnableApolloConfig, @ApolloConfigChangeListener, ConfigService, Config, or any Apollo-related annotation/class, or when the user mentions Apollo 配置, 配置中心, 开关, or wants to look up actual config values for code comprehension.
 ---
 
@@ -67,6 +67,13 @@ apl publish <namespace> --title "description" --yes
 
 ```bash
 apl get <namespace> --env FAT --format json
+```
+
+### Show help
+
+```bash
+apl --help            # main help
+apl <command> --help  # subcommand help
 ```
 
 ## Important Rules

@@ -1,6 +1,6 @@
 [package]
 name = "apl-cli"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "Apollo Configuration Center CLI for AI-assisted development"
 

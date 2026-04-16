@@ -67,8 +67,11 @@ pub enum Commands {
         #[arg(long, default_value = "10")]
         qps: u32,
     },
-    /// Show current resolved configuration
-    Show,
+    /// Show current resolved configuration (optionally filter by field name)
+    Show {
+        /// Config field to show (e.g. portal_url, token, env, app_id, cluster, operator, qps)
+        field: Option<String>,
+    },
     /// List environments and clusters for the app
     Envs,
     /// List all namespaces under the app

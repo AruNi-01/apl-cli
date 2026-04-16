@@ -22,7 +22,7 @@ pub fn execute(cli: Cli) -> Result<()> {
             qps,
         } => cmd_init(portal_url, token, env, app_id, cluster, operator, qps),
 
-        Commands::Show => cmd_show(),
+        Commands::Show { ref field } => cmd_show(field.as_deref()),
         Commands::Upgrade => return upgrade::cmd_upgrade(),
 
         Commands::Envs => {
@@ -116,7 +116,7 @@ fn cmd_init(
 
 // ── show ───────────────────────────────────────────────────────
 
-fn cmd_show() -> Result<()> {
+fn cmd_show(field: Option<&str>) -> Result<()> {
     if !AplConfig::exists() {
         println!(
             "{} .apollo-cli.toml not found in current directory.",
@@ -126,14 +126,31 @@ fn cmd_show() -> Result<()> {
         return Ok(());
     }
     let cfg = AplConfig::load()?;
-    println!("{}", "Current configuration:".bold());
-    println!("  portal_url : {}", cfg.portal_url.as_deref().unwrap_or("(not set)"));
-    println!("  token      : {}", mask_token(cfg.token.as_deref()));
-    println!("  env        : {}", cfg.default_env.as_deref().unwrap_or("UAT"));
-    println!("  app_id     : {}", cfg.default_app_id.as_deref().unwrap_or("(not set)"));
-    println!("  cluster    : {}", cfg.default_cluster.as_deref().unwrap_or("default"));
-    println!("  operator   : {}", cfg.default_operator.as_deref().unwrap_or("apollo"));
-    println!("  qps limit  : {}", cfg.rate_limit_qps.unwrap_or(10));
+
+    let fields: &[(&str, String)] = &[
+        ("portal_url", cfg.portal_url.as_deref().unwrap_or("(not set)").into()),
+        ("token",      mask_token(cfg.token.as_deref())),
+        ("env",        cfg.default_env.as_deref().unwrap_or("UAT").into()),
+        ("app_id",     cfg.default_app_id.as_deref().unwrap_or("(not set)").into()),
+        ("cluster",    cfg.default_cluster.as_deref().unwrap_or("default").into()),
+        ("operator",   cfg.default_operator.as_deref().unwrap_or("apollo").into()),
+        ("qps",        cfg.rate_limit_qps.unwrap_or(10).to_string()),
+    ];
+
+    if let Some(name) = field {
+        match fields.iter().find(|(k, _)| *k == name) {
+            Some((_, v)) => println!("{v}"),
+            None => bail!(
+                "Unknown field: \"{name}\". Available: {}",
+                fields.iter().map(|(k, _)| *k).collect::<Vec<_>>().join(", ")
+            ),
+        }
+    } else {
+        println!("{}", "Current configuration:".bold());
+        for (k, v) in fields {
+            println!("  {:<10} : {v}", k);
+        }
+    }
     Ok(())
 }
 
