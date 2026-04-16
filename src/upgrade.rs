@@ -40,18 +40,50 @@ fn now_epoch() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
 }
 
+fn github_token() -> Option<String> {
+    if let Ok(t) = env::var("GITHUB_TOKEN") {
+        if !t.is_empty() {
+            return Some(t);
+        }
+    }
+    let output = std::process::Command::new("gh")
+        .args(["auth", "token"])
+        .output()
+        .ok()?;
+    if output.status.success() {
+        let t = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !t.is_empty() {
+            return Some(t);
+        }
+    }
+    None
+}
+
 fn github_client() -> Client {
+    let mut headers = reqwest::header::HeaderMap::new();
+    if let Some(token) = github_token() {
+        if let Ok(val) = reqwest::header::HeaderValue::from_str(&format!("Bearer {token}")) {
+            headers.insert(reqwest::header::AUTHORIZATION, val);
+        }
+    }
     Client::builder()
         .timeout(Duration::from_secs(GITHUB_TIMEOUT_SECS))
         .user_agent(format!("apl-cli/{}", env!("CARGO_PKG_VERSION")))
+        .default_headers(headers)
         .build()
         .expect("failed to build HTTP client")
 }
 
 fn fetch_latest_version(client: &Client) -> Result<String> {
     let url = format!("https://api.github.com/repos/{REPO}/releases/latest");
-    let resp: GithubRelease = client.get(&url).send()?.json()?;
-    Ok(resp.tag_name.trim_start_matches('v').to_string())
+    let resp = client.get(&url).send()?;
+    if resp.status() == reqwest::StatusCode::FORBIDDEN
+        || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS
+    {
+        bail!("GitHub API rate limit exceeded. Try again later or set GITHUB_TOKEN.");
+    }
+    let release: GithubRelease = resp.error_for_status()?.json()?;
+    Ok(release.tag_name.trim_start_matches('v').to_string())
 }
 
 fn read_cache() -> Option<VersionCache> {
