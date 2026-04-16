@@ -12,6 +12,22 @@ curl -fsSL https://raw.githubusercontent.com/AruNi-01/apl-cli/main/install.sh | 
 
 自动检测系统（macOS / Linux）和架构（x86_64 / aarch64），下载预编译二进制到 `~/.local/bin`。
 
+### 从 Skill 安装
+
+如果你希望让支持 Skill 的 AI Agent 自动完成 CLI 安装和初始化，可以先安装这个 Skill：
+
+```bash
+npx skills add https://github.com/AruNi-01/apl-cli
+```
+
+然后把下面这段 Prompt 发给 AI：
+
+```text
+使用 apl-cli skill，帮我安装对应 CLI，并完成初始化 setup。
+```
+
+AI 会先检查本机是否已经安装 `apl`；如果未安装，会自动执行官方安装脚本，然后继续引导你完成 Apollo 配置。
+
 ### 从源码安装
 
 ```bash
@@ -154,7 +170,7 @@ default_operator = "your-domain-account"
 
 ## AI Agent 集成
 
-配套 Cursor Skill 位于 `~/.cursor/skills/apollo-config/SKILL.md`，AI Agent 会在以下场景自动使用：
+配套 Skill 安装后位于 `~/.cursor/skills/apl-cli/SKILL.md`，AI Agent 会在以下场景自动使用：
 
 - 代码中遇到 `@Value("${...}")` 或 `@ApolloJsonValue` 需要实际值
 - 用户询问 Apollo 配置或动态配置
@@ -189,8 +205,9 @@ apl-cli/
 ├── Cargo.toml
 ├── install.sh          # 一键安装脚本
 ├── README.md
-├── prompts/
-│   └── SKILL.md        # AI Agent Skill（源文件）
+├── skills/
+│   └── apl-cli/
+│       └── SKILL.md    # AI Agent Skill（源文件）
 └── src/
     ├── main.rs         # 入口
     ├── cli.rs          # 命令行定义（clap derive）
