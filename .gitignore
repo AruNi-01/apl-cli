@@ -1,0 +1,22 @@
+# Build output
+/target/
+
+# Cargo.lock for libraries (keep for binaries)
+# Cargo.lock
+
+# Backup files
+**/*.rs.bk
+
+# Editor/IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Debug
+*.pdb
+
+# Environment
+.env
