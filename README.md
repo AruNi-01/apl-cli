@@ -139,6 +139,7 @@ default_env      = "UAT"
 default_app_id   = "YourAppId"
 default_cluster  = "default"
 default_operator = "your-domain-account"
+rate_limit_qps   = 10
 ```
 
 **配置优先级**：CLI 参数 > 环境变量 > 配置文件 > 默认值
@@ -165,8 +166,28 @@ default_operator = "your-domain-account"
 --env <ENV>            覆盖环境（DEV/FAT/UAT/PRO）
 --app-id <ID>          覆盖 AppId
 --cluster <NAME>       覆盖集群名（默认 default）
+--qps <N>              覆盖限流 QPS（默认 10）
 --format <text|json>   输出格式（默认 text）
 ```
+
+## 限流
+
+为保护企业 Apollo 服务，所有 HTTP 请求均受客户端限流约束（基于 [governor](https://crates.io/crates/governor) GCRA 算法）。
+
+默认 **10 QPS**，可通过以下方式调整：
+
+```bash
+# 配置文件（.apollo-cli.toml）
+rate_limit_qps = 5
+
+# CLI 参数（优先级更高）
+apl ns --qps 5
+
+# init 时指定
+apl init --portal-url "..." --token "..." --app-id "..." --qps 5
+```
+
+当请求频率超过限制时，CLI 会自动等待至下一个可用时间窗口再发送请求，无需用户干预。
 
 ## AI Agent 集成
 

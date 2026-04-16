@@ -18,7 +18,8 @@ pub fn execute(cli: Cli) -> Result<()> {
             app_id,
             cluster,
             operator,
-        } => cmd_init(portal_url, token, env, app_id, cluster, operator),
+            qps,
+        } => cmd_init(portal_url, token, env, app_id, cluster, operator, qps),
 
         Commands::Show => cmd_show(),
 
@@ -94,6 +95,7 @@ fn cmd_init(
     app_id: String,
     cluster: String,
     operator: String,
+    qps: u32,
 ) -> Result<()> {
     let cfg = AplConfig {
         portal_url: Some(portal_url),
@@ -102,6 +104,7 @@ fn cmd_init(
         default_app_id: Some(app_id),
         default_cluster: Some(cluster),
         default_operator: Some(operator),
+        rate_limit_qps: Some(qps),
     };
     cfg.save()?;
     let path = AplConfig::path();
@@ -128,6 +131,7 @@ fn cmd_show() -> Result<()> {
     println!("  app_id     : {}", cfg.default_app_id.as_deref().unwrap_or("(not set)"));
     println!("  cluster    : {}", cfg.default_cluster.as_deref().unwrap_or("default"));
     println!("  operator   : {}", cfg.default_operator.as_deref().unwrap_or("apollo"));
+    println!("  qps limit  : {}", cfg.rate_limit_qps.unwrap_or(10));
     Ok(())
 }
 
@@ -348,6 +352,7 @@ fn resolve(cli: &Cli, operator: Option<&str>) -> Result<Resolved> {
         cli.app_id.as_deref(),
         cli.cluster.as_deref(),
         operator,
+        cli.qps,
     )
 }
 

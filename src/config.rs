@@ -12,6 +12,7 @@ pub struct AplConfig {
     pub default_app_id: Option<String>,
     pub default_cluster: Option<String>,
     pub default_operator: Option<String>,
+    pub rate_limit_qps: Option<u32>,
 }
 
 impl AplConfig {
@@ -49,7 +50,10 @@ pub struct Resolved {
     pub app_id: String,
     pub cluster: String,
     pub operator: String,
+    pub rate_limit_qps: u32,
 }
+
+const DEFAULT_RATE_LIMIT_QPS: u32 = 10;
 
 impl Resolved {
     pub fn from_cli(
@@ -59,6 +63,7 @@ impl Resolved {
         cli_app_id: Option<&str>,
         cli_cluster: Option<&str>,
         cli_operator: Option<&str>,
+        cli_qps: Option<u32>,
     ) -> Result<Self> {
         let file = AplConfig::load()?;
 
@@ -74,8 +79,9 @@ impl Resolved {
         let env = first_of(cli_env, file.default_env.as_deref()).unwrap_or("UAT".into());
         let cluster = first_of(cli_cluster, file.default_cluster.as_deref()).unwrap_or("default".into());
         let operator = first_of(cli_operator, file.default_operator.as_deref()).unwrap_or("apollo".into());
+        let rate_limit_qps = cli_qps.or(file.rate_limit_qps).unwrap_or(DEFAULT_RATE_LIMIT_QPS);
 
-        Ok(Self { portal_url, token, env, app_id, cluster, operator })
+        Ok(Self { portal_url, token, env, app_id, cluster, operator, rate_limit_qps })
     }
 
     pub fn is_pro(&self) -> bool {

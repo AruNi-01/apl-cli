@@ -115,6 +115,7 @@ apl get <namespace> --env FAT --format json
 3. **PRO is read-only** - the CLI blocks all writes to PRO. Do not attempt `set` / `delete` / `publish` with `--env PRO`
 4. **Confirm writes with user first** - before running `set` or `delete`, tell the user what you plan to change and get approval in chat. Then pass `--yes` to skip the interactive prompt
 5. **Publish after set** - `set` only stages the change. Remind the user to `publish` if they want it to take effect immediately
+6. **Rate limiting is built-in** - default 10 QPS, configurable via `rate_limit_qps` in `.apollo-cli.toml` or `--qps` flag. No need to add external throttling
 
 ## Typical Workflow
 

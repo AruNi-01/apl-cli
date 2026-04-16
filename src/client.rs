@@ -1,9 +1,18 @@
+use std::num::NonZeroU32;
+
 use anyhow::{bail, Result};
+use governor::{Quota, RateLimiter, clock::{Clock, DefaultClock}};
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
 
 use crate::config::Resolved;
 use crate::models::*;
+
+type DirectLimiter = RateLimiter<
+    governor::state::NotKeyed,
+    governor::state::InMemoryState,
+    DefaultClock,
+>;
 
 pub struct ApolloClient {
     http: Client,
@@ -12,11 +21,13 @@ pub struct ApolloClient {
     pub env: String,
     pub app_id: String,
     pub cluster: String,
+    limiter: DirectLimiter,
 }
 
 impl ApolloClient {
     pub fn new(cfg: &Resolved) -> Self {
         let portal = cfg.portal_url.trim_end_matches('/');
+        let qps = NonZeroU32::new(cfg.rate_limit_qps).unwrap_or(NonZeroU32::new(10).unwrap());
         Self {
             http: Client::builder()
                 .timeout(std::time::Duration::from_secs(10))
@@ -27,6 +38,7 @@ impl ApolloClient {
             env: cfg.env.clone(),
             app_id: cfg.app_id.clone(),
             cluster: cfg.cluster.clone(),
+            limiter: RateLimiter::direct(Quota::per_second(qps)),
         }
     }
 
@@ -139,11 +151,24 @@ impl ApolloClient {
 
     // ── Helpers ────────────────────────────────────────────────
 
+    fn wait_for_permit(&self) {
+        let clock = DefaultClock::default();
+        loop {
+            match self.limiter.check() {
+                Ok(_) => return,
+                Err(not_until) => {
+                    std::thread::sleep(not_until.wait_time_from(clock.now()));
+                }
+            }
+        }
+    }
+
     fn request(
         &self,
         method: reqwest::Method,
         url: &str,
     ) -> Result<reqwest::blocking::RequestBuilder> {
+        self.wait_for_permit();
         Ok(self
             .http
             .request(method, url)

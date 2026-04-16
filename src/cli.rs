@@ -26,6 +26,10 @@ pub struct Cli {
     #[arg(long, global = true, env = "APOLLO_CLUSTER")]
     pub cluster: Option<String>,
 
+    /// Rate limit: max queries per second (default: 10)
+    #[arg(long, global = true)]
+    pub qps: Option<u32>,
+
     /// Output format
     #[arg(long, global = true, default_value = "text")]
     pub format: OutputFormat,
@@ -59,6 +63,9 @@ pub enum Commands {
         /// Default operator (domain account)
         #[arg(long, default_value = "apollo")]
         operator: String,
+        /// Rate limit: max queries per second (default: 10)
+        #[arg(long, default_value = "10")]
+        qps: u32,
     },
     /// Show current resolved configuration
     Show,
