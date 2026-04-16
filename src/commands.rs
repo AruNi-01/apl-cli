@@ -8,6 +8,7 @@ use crate::client::ApolloClient;
 use crate::config::{AplConfig, Resolved};
 use crate::models::*;
 use crate::output;
+use crate::upgrade;
 
 pub fn execute(cli: Cli) -> Result<()> {
     match cli.command {
@@ -22,6 +23,7 @@ pub fn execute(cli: Cli) -> Result<()> {
         } => cmd_init(portal_url, token, env, app_id, cluster, operator, qps),
 
         Commands::Show => cmd_show(),
+        Commands::Upgrade => return upgrade::cmd_upgrade(),
 
         Commands::Envs => {
             let r = resolve(&cli, None)?;

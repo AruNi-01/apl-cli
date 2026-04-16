@@ -114,6 +114,8 @@ pub enum Commands {
         #[arg(long)]
         yes: bool,
     },
+    /// Upgrade apl to the latest version
+    Upgrade,
     /// Publish namespace changes (blocked for PRO)
     Publish {
         /// Namespace name
