@@ -1,0 +1,24 @@
+[package]
+name = "apl-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Apollo Configuration Center CLI for AI-assisted development"
+
+[[bin]]
+name = "apl"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+colored = "2"
+dialoguer = "0.11"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+[profile.release]
+strip = true
+lto = true
+opt-level = "z"
