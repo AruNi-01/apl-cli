@@ -176,7 +176,7 @@ git push origin v0.1.0
 | ----------------------------- | ---------------- |
 | Linux x86_64                  | ubuntu-latest 原生 |
 | Linux aarch64                 | cross 交叉编译       |
-| macOS x86_64 (Intel)          | macos-13 原生      |
+| macOS x86_64 (Intel)          | macos-15-intel 原生 |
 | macOS aarch64 (Apple Silicon) | macos-latest 原生  |
 
 
