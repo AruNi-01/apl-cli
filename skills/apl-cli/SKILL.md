@@ -1,62 +1,23 @@
 ---
 name: apl-cli
-version: 0.1.0
-description: >-
-  Query, read, and modify Apollo configuration center values using the apl CLI.
-  Use when code references @Value, @ApolloJsonValue, Apollo dynamic config, or
-  when you need actual runtime config values for code analysis. Also use when the
-  user asks about Apollo config, wants to check/change config values, or mentions
-  feature flags and dynamic thresholds.
+version: 0.2.0
+description: Query, read, and modify Apollo configuration center values using the apl CLI. Use when code references @ApolloJsonValue, @ApolloConfig, @EnableApolloConfig, @ApolloConfigChangeListener, ConfigService, Config, or any Apollo-related annotation/class, or when the user mentions Apollo 配置, 配置中心, 开关, or wants to look up actual config values for code comprehension.
 ---
 
 # Apollo Configuration Lookup
 
 Use the `apl` CLI to read and write Apollo configs during coding sessions.
 
-## Install apl-cli
+## Quick Setup Check
 
-Before any other operation, check whether `apl` is already available:
-
-```bash
-command -v apl >/dev/null 2>&1 && apl --version || echo "APL_NOT_INSTALLED"
-```
-
-If `apl` is not installed, install it with the official one-line script:
+Run this before your first `apl` command in a session:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/AruNi-01/apl-cli/main/install.sh | sh
+command -v apl >/dev/null 2>&1 && test -f .apollo-cli.toml && echo "READY" || echo "NEED_SETUP"
 ```
 
-After installation, verify it again:
-
-```bash
-apl --version
-```
-
-## Prerequisites Check
-
-Before any operation, verify setup:
-
-```bash
-command -v apl >/dev/null 2>&1 && cat .apollo-cli.toml 2>/dev/null || echo "NOT_CONFIGURED"
-```
-
-### If `.apollo-cli.toml` is missing
-
-Ask the user for these 4 values, then run init:
-
-1. **portal_url** — Apollo Portal address (e.g. `http://apollo-portal.internal.com`)
-2. **token** — Open API token (created in Apollo Portal → Open Platform)
-3. **app_id** — application ID (e.g. `AppBitsfullWebService`)
-4. **operator** — domain account / SSO username
-
-Then execute:
-
-```bash
-apl init --portal-url "<url>" --token "<token>" --app-id "<appId>" --operator "<name>"
-```
-
-If the user provides the values in chat, construct and run the command yourself.
+- If output is **READY** → skip to **Command Reference** below.
+- If `apl` is not found or `.apollo-cli.toml` is missing → read `references/setup.md` in this skill directory and follow its instructions, then come back here.
 
 ## Command Reference
 
@@ -72,7 +33,7 @@ apl ns --format json
 apl get <namespace> --format json
 ```
 
-### Get specific keys (most common - avoids context pollution)
+### Get specific keys (preferred — avoids context pollution)
 
 ```bash
 apl get <namespace> --keys key1,key2,key3 --format json
@@ -110,12 +71,12 @@ apl get <namespace> --env FAT --format json
 
 ## Important Rules
 
-1. **Always use `--format json`** for machine-readable output
-2. **Only fetch specific keys you need** - use `--keys k1,k2` to avoid flooding context
-3. **PRO is read-only** - the CLI blocks all writes to PRO. Do not attempt `set` / `delete` / `publish` with `--env PRO`
-4. **Confirm writes with user first** - before running `set` or `delete`, tell the user what you plan to change and get approval in chat. Then pass `--yes` to skip the interactive prompt
-5. **Publish after set** - `set` only stages the change. Remind the user to `publish` if they want it to take effect immediately
-6. **Rate limiting is built-in** - default 10 QPS, configurable via `rate_limit_qps` in `.apollo-cli.toml` or `--qps` flag. No need to add external throttling
+1. **Always use `--format json`** for machine-readable output.
+2. **Only fetch specific keys you need** — use `--keys k1,k2` to avoid flooding context.
+3. **PRO is read-only** — the CLI blocks all writes to PRO. Do not attempt `set` / `delete` / `publish` with `--env PRO`.
+4. **Confirm writes with user first** — before running `set` or `delete`, tell the user what you plan to change and get approval. Then pass `--yes` to skip the interactive prompt.
+5. **Publish after set** — `set` only stages the change. Remind the user to `publish` if they want it to take effect immediately.
+6. **Rate limiting is built-in** — default 10 QPS, configurable via `rate_limit_qps` in `.apollo-cli.toml` or `--qps` flag. No need to add external throttling.
 
 ## Typical Workflow
 
@@ -128,7 +89,7 @@ apl get application --keys trade.order.max.retry,ws.reconnect.interval --format 
 **Modifying a config value (after user approval):**
 
 ```bash
-apl get application timeout --format json          # show current
+apl get application timeout --format json
 apl set application timeout "5000" --comment "increase timeout per user request" --yes
 apl publish application --title "update timeout" --yes
 ```
