@@ -12,8 +12,7 @@ use serde::{Deserialize, Serialize};
 const REPO: &str = "AruNi-01/apl-cli";
 const CHECK_INTERVAL_SECS: u64 = 86400; // 24h
 const GITHUB_TIMEOUT_SECS: u64 = 3;
-const SKILL_NAME: &str = "apl-cli";
-const SKILL_TREE_PATH: &str = "skills/apl-cli";
+const SKILLS_DIR: &str = "skills";
 const RAW_BASE: &str = "https://raw.githubusercontent.com/AruNi-01/apl-cli/main";
 
 #[derive(Deserialize)]
@@ -260,51 +259,71 @@ fn sync_skill(client: &Client) {
 }
 
 fn sync_skill_inner(client: &Client) -> Result<()> {
-    let remote_skill = client
-        .get(&format!("{RAW_BASE}/{SKILL_TREE_PATH}/SKILL.md"))
-        .timeout(Duration::from_secs(10))
-        .send()
-        .and_then(|r| r.error_for_status())
-        .and_then(|r| r.text())
-        .context("Failed to fetch latest SKILL.md")?;
+    let tree = fetch_repo_tree(client)?;
+    let remote_skills = discover_remote_skills(&tree);
 
-    let remote_ver = parse_skill_version(&remote_skill)
-        .context("Failed to parse version from remote SKILL.md")?;
-
-    let local_dirs = collect_skill_dirs();
-    if local_dirs.is_empty() {
+    if remote_skills.is_empty() {
         return Ok(());
     }
 
-    let remote_files = fetch_skill_tree(client)?;
+    for (skill_name, file_paths) in &remote_skills {
+        let remote_skill_md_path = format!("{SKILLS_DIR}/{skill_name}/SKILL.md");
+        let remote_content = client
+            .get(&format!("{RAW_BASE}/{remote_skill_md_path}"))
+            .timeout(Duration::from_secs(10))
+            .send()
+            .and_then(|r| r.error_for_status())
+            .and_then(|r| r.text());
+        let remote_content = match remote_content {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let remote_ver = match parse_skill_version(&remote_content) {
+            Some(v) => v,
+            None => continue,
+        };
 
-    for dir in &local_dirs {
-        let local_skill = dir.join("SKILL.md");
-        let local_ver = fs::read_to_string(&local_skill)
-            .ok()
-            .and_then(|c| parse_skill_version(&c))
-            .unwrap_or_else(|| "0.0.0".to_string());
+        let local_dirs = collect_skill_dirs(skill_name);
+        for dir in &local_dirs {
+            let local_ver = fs::read_to_string(dir.join("SKILL.md"))
+                .ok()
+                .and_then(|c| parse_skill_version(&c))
+                .unwrap_or_else(|| "0.0.0".to_string());
 
-        if !is_newer(&remote_ver, &local_ver) {
-            continue;
-        }
-
-        for (rel_path, content) in &remote_files {
-            let dest = dir.join(rel_path);
-            if let Some(parent) = dest.parent() {
-                let _ = fs::create_dir_all(parent);
+            if !is_newer(&remote_ver, &local_ver) {
+                continue;
             }
-            fs::write(&dest, content)
-                .with_context(|| format!("Failed to write {}", dest.display()))?;
-        }
 
-        println!(
-            "{} {} ({} -> {})",
-            "Skill updated:".cyan().bold(),
-            dir.display(),
-            local_ver.dimmed(),
-            remote_ver.green(),
-        );
+            let prefix = format!("{SKILLS_DIR}/{skill_name}/");
+            for full_path in file_paths {
+                let rel = full_path.strip_prefix(&prefix).unwrap_or(full_path);
+                let raw_url = format!("{RAW_BASE}/{full_path}");
+                let content = client
+                    .get(&raw_url)
+                    .timeout(Duration::from_secs(10))
+                    .send()
+                    .and_then(|r| r.error_for_status())
+                    .and_then(|r| r.text());
+                let content = match content {
+                    Ok(c) => c,
+                    Err(_) => continue,
+                };
+                let dest = dir.join(rel);
+                if let Some(parent) = dest.parent() {
+                    let _ = fs::create_dir_all(parent);
+                }
+                fs::write(&dest, &content)
+                    .with_context(|| format!("Failed to write {}", dest.display()))?;
+            }
+
+            println!(
+                "{} {} ({} -> {})",
+                "Skill updated:".cyan().bold(),
+                dir.display(),
+                local_ver.dimmed(),
+                remote_ver.green(),
+            );
+        }
     }
     Ok(())
 }
@@ -321,9 +340,7 @@ struct TreeResponse {
     tree: Vec<TreeEntry>,
 }
 
-/// Fetch the full file tree under `skills/apl-cli/` and download each file.
-/// Returns a list of (relative_path, content) pairs.
-fn fetch_skill_tree(client: &Client) -> Result<Vec<(String, String)>> {
+fn fetch_repo_tree(client: &Client) -> Result<TreeResponse> {
     let url = format!(
         "https://api.github.com/repos/{REPO}/git/trees/main?recursive=1"
     );
@@ -334,28 +351,31 @@ fn fetch_skill_tree(client: &Client) -> Result<Vec<(String, String)>> {
     if !resp.status().is_success() {
         bail!("Failed to fetch repo tree: HTTP {}", resp.status());
     }
-    let tree: TreeResponse = resp.json()?;
+    Ok(resp.json()?)
+}
 
-    let prefix = format!("{SKILL_TREE_PATH}/");
-    let skill_files: Vec<&str> = tree.tree.iter()
-        .filter(|e| e.entry_type == "blob" && e.path.starts_with(&prefix))
-        .map(|e| e.path.as_str())
-        .collect();
+/// Discover all skill directories under `skills/` from the repo tree.
+/// Returns a map of skill_name -> list of file paths.
+fn discover_remote_skills(tree: &TreeResponse) -> std::collections::HashMap<String, Vec<String>> {
+    let mut skills: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    let prefix = format!("{SKILLS_DIR}/");
 
-    let mut files = Vec::new();
-    for full_path in skill_files {
-        let rel = full_path.strip_prefix(&prefix).unwrap_or(full_path);
-        let raw_url = format!("{RAW_BASE}/{full_path}");
-        let content = client
-            .get(&raw_url)
-            .timeout(Duration::from_secs(10))
-            .send()
-            .and_then(|r| r.error_for_status())
-            .and_then(|r| r.text())
-            .with_context(|| format!("Failed to download {full_path}"))?;
-        files.push((rel.to_string(), content));
+    for entry in &tree.tree {
+        if entry.entry_type != "blob" || !entry.path.starts_with(&prefix) {
+            continue;
+        }
+        let rest = &entry.path[prefix.len()..];
+        if let Some(slash) = rest.find('/') {
+            let name = &rest[..slash];
+            if rest.ends_with("AGENTS.md") {
+                continue;
+            }
+            skills.entry(name.to_string()).or_default().push(entry.path.clone());
+        }
     }
-    Ok(files)
+
+    skills.retain(|_, files| files.iter().any(|f| f.ends_with("/SKILL.md")));
+    skills
 }
 
 fn parse_skill_version(content: &str) -> Option<String> {
@@ -375,9 +395,9 @@ fn parse_skill_version(content: &str) -> Option<String> {
     None
 }
 
-/// Collect all local skill directories matching `apl-cli` or `apl-cli-<version>`.
+/// Find local directories matching a skill name (exact match).
 /// Checks `~/.agents/skills/` and `./.agents/skills/`.
-fn collect_skill_dirs() -> Vec<PathBuf> {
+fn collect_skill_dirs(skill_name: &str) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     let home = env::var("HOME").unwrap_or_default();
     let cwd = env::current_dir().unwrap_or_default();
@@ -394,8 +414,7 @@ fn collect_skill_dirs() -> Vec<PathBuf> {
         };
         for entry in entries.flatten() {
             let dir_name = entry.file_name();
-            let dir_name = dir_name.to_string_lossy();
-            if dir_name == SKILL_NAME || dir_name.starts_with(&format!("{SKILL_NAME}-")) {
+            if dir_name == skill_name {
                 let path = entry.path();
                 if path.join("SKILL.md").is_file() {
                     dirs.push(path);
@@ -457,4 +476,5 @@ mod tests {
 
         assert_eq!(parse_skill_version("no frontmatter"), None);
     }
+
 }
