@@ -41,17 +41,22 @@ If there are **zero** commits since the last tag, tell the user there is nothing
 
 ## Step 3 — Determine Version Bump
 
-Analyze commit prefixes using [Conventional Commits](https://www.conventionalcommits.org/) to decide the bump level.
+Version format: **MAJOR.MINOR.PATCH** (e.g. `2.5.13`)
 
-| Signal                                           | Bump  |
-| ------------------------------------------------ | ----- |
-| Commit body/footer contains `BREAKING CHANGE` or type has `!` suffix (e.g. `feat!:`) | major |
-| Any `feat:` or `feat(scope):` commit             | minor |
-| Everything else (`fix:`, `docs:`, `chore:`, `refactor:`, `perf:`, `test:`, etc.) | patch |
+Do NOT blindly follow the commit prefix. Read the actual changes and judge by their **user-facing impact**:
 
-Take the **highest** applicable bump. For example, if there is one `feat:` and three `fix:`, the bump is **minor**.
+| What changed                                         | Bump  | Example                          |
+| ---------------------------------------------------- | ----- | -------------------------------- |
+| Breaking change (incompatible API, config format, CLI args removed) | MAJOR | change API response structure: `1.4.2` → `2.0.0` |
+| New user-facing feature (new command, new capability) | MINOR | add export function: `1.4.2` → `1.5.0` |
+| Bug fix, performance improvement, internal refactor, docs, CI, tooling, adding skill files, dependency updates | PATCH | fix login bug: `1.4.2` → `1.4.3` |
 
-Calculate the new version from the last tag accordingly.
+Key distinctions:
+- `feat:` in the commit message does **not** automatically mean MINOR. A commit tagged `feat:` that only adds internal tooling, documentation, or skill files is still PATCH.
+- MINOR is reserved for changes that give users **new functionality they can use** (e.g. a new CLI command, a new flag, a new config option).
+- When in doubt, prefer PATCH.
+
+Take the **highest** applicable bump across all commits. Calculate the new version from the last tag accordingly.
 
 ## Step 4 — Check Skill Changes
 
