@@ -1,0 +1,147 @@
+---
+name: apl-cli-release
+version: 0.1.0
+description: >-
+  Automate the release process for apl-cli. Use this skill whenever the user
+  says "release", "发布", "打 tag", "publish a new version", "bump version",
+  "发新版", or any phrase indicating they want to cut a new release. Also use
+  when the user references this skill by name.
+---
+
+# apl-cli Release
+
+Automate version bump, changelog generation, and GitHub Release for the apl-cli project.
+
+## Pre-flight Checks
+
+Before anything else, verify the repo is in a releasable state:
+
+```bash
+git status --porcelain
+```
+
+- If there are uncommitted changes, ask the user whether to commit them first or abort.
+- If on a branch other than `main`, warn the user and confirm before proceeding.
+
+## Step 1 — Determine the Last Tag
+
+```bash
+git describe --tags --abbrev=0
+```
+
+This gives the most recent tag (e.g. `v0.2.4`). All subsequent analysis is relative to this tag.
+
+## Step 2 — Collect Commits Since Last Tag
+
+```bash
+git log <last-tag>..HEAD --oneline
+```
+
+If there are **zero** commits since the last tag, tell the user there is nothing to release and stop.
+
+## Step 3 — Determine Version Bump
+
+Analyze commit prefixes using [Conventional Commits](https://www.conventionalcommits.org/) to decide the bump level.
+
+| Signal                                           | Bump  |
+| ------------------------------------------------ | ----- |
+| Commit body/footer contains `BREAKING CHANGE` or type has `!` suffix (e.g. `feat!:`) | major |
+| Any `feat:` or `feat(scope):` commit             | minor |
+| Everything else (`fix:`, `docs:`, `chore:`, `refactor:`, `perf:`, `test:`, etc.) | patch |
+
+Take the **highest** applicable bump. For example, if there is one `feat:` and three `fix:`, the bump is **minor**.
+
+Calculate the new version from the last tag accordingly.
+
+## Step 4 — Check Skill Changes
+
+```bash
+git diff <last-tag>..HEAD --name-only -- skills/
+```
+
+If any file under `skills/` was modified, the skill version in `skills/apl-cli/SKILL.md` frontmatter must also be bumped. Use the **same** new version as the CLI itself so they stay in sync.
+
+## Step 5 — Apply Version Bumps
+
+1. **Cargo.toml** — update the `version = "..."` field to the new version.
+2. **skills/apl-cli/SKILL.md** — if skill changes were detected in Step 4, update the `version:` field in the YAML frontmatter to the same new version.
+
+After editing, do a quick sanity check:
+
+```bash
+cargo check
+```
+
+## Step 6 — Generate Release Notes
+
+Build a human-readable changelog from the commits collected in Step 2. Group by type:
+
+```markdown
+## What's Changed
+
+### Features
+- support `apl show <field>` to query a single config value (2f8c7f2)
+
+### Bug Fixes
+- handle GitHub API rate limit and auto-detect gh CLI token (8168e12)
+- sync entire skill directory on upgrade, not just SKILL.md (27848ed)
+
+### Other
+- bump version to 0.2.4 (89cae08)
+```
+
+Rules:
+- Use the **commit subject** (first line) as the description, with the short hash in parentheses.
+- Omit the conventional commit prefix from the description (e.g. show "add foo" not "feat: add foo").
+- Group mapping: `feat` → Features, `fix` → Bug Fixes, `docs` → Documentation, `perf` → Performance. Everything else (`chore`, `refactor`, `test`, `ci`, `build`, `style`) → Other.
+- Skip empty groups.
+- Append a **Full Changelog** link at the bottom: `**Full Changelog**: https://github.com/AruNi-01/apl-cli/compare/<old-tag>...v<new-version>`
+
+## Step 7 — Commit, Tag, Push
+
+Run these sequentially:
+
+```bash
+git add -A
+git commit -m "chore(release): v<new-version>"
+git push origin main
+git tag -a v<new-version> -m "release v<new-version>"
+git push origin v<new-version>
+```
+
+## Step 8 — Create GitHub Release
+
+Use `gh release create` with the generated notes. Do **not** use `--generate-notes` — use our own changelog from Step 6.
+
+```bash
+gh release create v<new-version> \
+  --title "v<new-version>" \
+  --notes "$(cat <<'EOF'
+<release notes from Step 6>
+EOF
+)"
+```
+
+Wait, then confirm the release URL is accessible:
+
+```bash
+gh release view v<new-version> --json url -q .url
+```
+
+## Step 9 — Report
+
+Print a summary to the user:
+
+```
+Release complete!
+  Version : v<old> -> v<new>
+  Commits : <count>
+  Tag     : v<new-version>
+  Release : <github-release-url>
+```
+
+## Important
+
+- Always bump `Cargo.toml` version **before** tagging — the version is baked into the binary at compile time.
+- The CI workflow (`.github/workflows/release.yml`) is triggered by `v*` tags and builds release binaries automatically. The `gh release create` here creates the Release object with proper notes; CI will attach the binaries to it.
+- If CI hasn't finished attaching binaries yet when the release is created, that's fine — they'll appear once the workflow completes.
