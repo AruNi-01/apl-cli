@@ -1,6 +1,6 @@
 ---
 name: apl-cli-release
-version: 0.1.0
+version: 0.1.1
 description: >-
   Automate the release process for apl-cli. Use this skill whenever the user
   says "release", "发布", "打 tag", "publish a new version", "bump version",
@@ -58,18 +58,32 @@ Key distinctions:
 
 Take the **highest** applicable bump across all commits. Calculate the new version from the last tag accordingly.
 
-## Step 4 — Check Skill Changes
+## Step 4 — Check Skill Changes (independent semver)
 
 ```bash
 git diff <last-tag>..HEAD --name-only -- skills/
 ```
 
-If any file under `skills/` was modified, the skill version in `skills/apl-cli/SKILL.md` frontmatter must also be bumped. Use the **same** new version as the CLI itself so they stay in sync.
+The **`version:` in `skills/apl-cli/SKILL.md` is the skill’s own semver**. It does **not** have to match the CLI / `Cargo.toml` version.
+
+- If **nothing** under `skills/` changed since `<last-tag>`, do **not** bump the skill `version:` in this release.
+- If **any** file under `skills/` changed, bump `skills/apl-cli/SKILL.md` frontmatter `version:`:
+  1. Read the **current** skill `version:` from that file.
+  2. Inspect the `skills/` diff and choose **MAJOR / MINOR / PATCH** from **skill-consumer impact** (instructions, examples, rules — not the Rust binary):
+     | What changed in `skills/` | Bump |
+     | ------------------------- | ---- |
+     | Breaking for agents (removed commands, reversed required flow, renamed critical rules) | MAJOR |
+     | New documented capability, new section, new command examples that change how agents work | MINOR |
+     | Typos, clarifications, small rule tweaks, wording | PATCH |
+  3. When in doubt, prefer **PATCH** for the skill.
+  4. Compute the new skill version from the **existing skill `version:`**, not from the CLI tag.
+
+**Never** set skill `version:` equal to the CLI version just to “keep them in sync.”
 
 ## Step 5 — Apply Version Bumps
 
-1. **Cargo.toml** — update the `version = "..."` field to the new version.
-2. **skills/apl-cli/SKILL.md** — if skill changes were detected in Step 4, update the `version:` field in the YAML frontmatter to the same new version.
+1. **Cargo.toml** — update the `version = "..."` field to the **new CLI version** from Step 3 (this is what the `v*` tag represents).
+2. **skills/apl-cli/SKILL.md** — only if Step 4 required it: update frontmatter `version:` to the **new skill version** from Step 4 (independent of `Cargo.toml`).
 
 After editing, do a quick sanity check:
 
@@ -139,14 +153,18 @@ Print a summary to the user:
 
 ```
 Release complete!
-  Version : v<old> -> v<new>
+  Version : v<old> -> v<new>   (CLI / tag)
+  Skill   : <old-skill-ver> -> <new-skill-ver>   (only if skills/ bumped)
   Commits : <count>
   Tag     : v<new-version>
   Release : <github-release-url>
 ```
 
+Omit the `Skill` line if `skills/` was not bumped this release.
+
 ## Important
 
 - Always bump `Cargo.toml` version **before** tagging — the version is baked into the binary at compile time.
+- **Skill semver** (`skills/apl-cli/SKILL.md` `version:`) is separate from the CLI; bump it only from Step 4 rules when `skills/` changes.
 - The CI workflow (`.github/workflows/release.yml`) is triggered by `v*` tags and builds release binaries automatically. The `gh release create` here creates the Release object with proper notes; CI will attach the binaries to it.
 - If CI hasn't finished attaching binaries yet when the release is created, that's fine — they'll appear once the workflow completes.
