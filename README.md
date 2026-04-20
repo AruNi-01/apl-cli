@@ -1,56 +1,62 @@
-# APL-CLI — Apollo Configuration Center CLI
+# APL-CLI
 
-针对 AI Coding 场景设计的 Apollo 配置中心命令行工具。让 AI Agent 能在编码过程中直接读取和管理 Apollo 动态配置，不再只能依赖默认值/空值来分析代码。
+**Apollo Configuration Center CLI**
 
-## 安装
+[简体中文](./README.zh-CN.md) | English
 
-### 一键安装（推荐，无需 Rust）
+Command-line interface for the [Apollo](https://www.apolloconfig.com/) configuration center. Use it to read and manage dynamic configuration from the terminal—especially in AI-assisted coding workflows where agents need real values instead of placeholders.
+
+## Installation
+
+### One-line install (recommended, no Rust)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/AruNi-01/apl-cli/main/install.sh | sh
 ```
 
-自动检测系统（macOS / Linux）和架构（x86_64 / aarch64），下载预编译二进制到 `~/.local/bin`。
+Detects OS (macOS / Linux) and architecture (x86_64 / aarch64), then installs the prebuilt binary to `~/.local/bin`.
 
-### 从 Skill 安装
+### Install via Skill
 
-如果你希望让支持 Skill 的 AI Agent 自动完成 CLI 安装和初始化，可以先安装这个 Skill：
+For agents that support Skills, install the bundled skill first:
 
 ```bash
 npx skills add https://github.com/AruNi-01/apl-cli
 ```
 
-然后把下面这段 Prompt 发给 AI：
+Then prompt the agent, for example:
 
 ```text
-使用 apl-cli skill，帮我安装对应 CLI，并完成初始化 setup。
+Use the apl-cli skill to install the CLI and run setup initialization.
 ```
 
-AI 会先检查本机是否已经安装 `apl`；如果未安装，会自动执行官方安装脚本，然后继续引导你完成 Apollo 配置。
+The agent checks for `apl` on the machine; if missing, it runs the install script and walks you through Apollo configuration.
 
-### 从源码安装
+### Build from source
+
+**Prerequisites:** Rust toolchain with `cargo` (stable recommended).
 
 ```bash
 cargo install --git https://github.com/AruNi-01/apl-cli.git
 ```
 
-### 验证
+### Verify
 
 ```bash
 apl --version
 ```
 
-## 快速开始
+## Quick start
 
-### 1. 获取 Token
+### 1. Create a token
 
-在 Apollo Portal 中创建 Open API Token：
+In Apollo Portal, create an Open API token:
 
-> Apollo Portal → 开放平台 → 创建第三方应用 → 授权 Namespace
+> Apollo Portal → Open Platform → Create third-party application → Authorize namespaces
 
-### 2. 初始化配置
+### 2. Initialize configuration
 
-在项目根目录执行：
+From your project root:
 
 ```bash
 apl init \
@@ -60,78 +66,76 @@ apl init \
   --operator "your-domain-account"
 ```
 
-这会在当前目录生成 `.apollo-cli.toml`，每个项目独立配置，天然隔离。
+This writes `.apollo-cli.toml` in the current directory—one config per project.
 
-### 3. 使用
+### 3. Use the CLI
 
 ```bash
-# 查看所有 Namespace
+# List namespaces
 apl ns
 
-# 查看某个 Namespace 的全部配置
+# Read all keys in a namespace
 apl get application
 
-# 查看指定 key（最常用 — 避免上下文污染）
+# Read selected keys (common for agents—reduces noise)
 apl get application --keys timeout,batch.size,retry.count
 
-# 查看单个 key
+# Read a single key
 apl get application timeout
 ```
 
-## 命令一览
+## Commands
 
+| Command | Description |
+| --- | --- |
+| `apl init` | Create `.apollo-cli.toml` |
+| `apl show` | Show current config (token masked) |
+| `apl envs` | List environments and clusters |
+| `apl ns` | List namespaces |
+| `apl get <ns> [key]` | Read config; supports `--keys k1,k2` |
+| `apl set <ns> <key> <value>` | Create or update a key |
+| `apl delete <ns> <key>` | Delete a key |
+| `apl publish <ns>` | Publish namespace changes |
+| `apl upgrade` | Upgrade to the latest release |
 
-| 命令                           | 说明                         |
-| ---------------------------- | -------------------------- |
-| `apl init`                   | 生成 `.apollo-cli.toml` 配置文件 |
-| `apl show`                   | 显示当前配置（token 脱敏）           |
-| `apl envs`                   | 列出所有环境和集群                  |
-| `apl ns`                     | 列出所有 Namespace             |
-| `apl get <ns> [key]`         | 读取配置，支持 `--keys k1,k2` 过滤  |
-| `apl set <ns> <key> <value>` | 创建或修改配置                    |
-| `apl delete <ns> <key>`      | 删除配置                       |
-| `apl publish <ns>`           | 发布 Namespace 变更            |
-| `apl upgrade`                | 升级到最新版本                   |
-
-
-## 读取配置
+## Reading configuration
 
 ```bash
-# 全部配置
+# Entire namespace
 apl get application
 
-# 指定多个 key
+# Multiple keys
 apl get application --keys timeout,max.retry
 
-# 单个 key
+# Single key
 apl get application timeout
 
-# JSON 格式输出（AI Agent 推荐）
+# JSON output (recommended for agents)
 apl get application --keys timeout,batch --format json
-# 输出: {"batch":"100","timeout":"3000"}
+# Example: {"batch":"100","timeout":"3000"}
 
-# 查询其他环境
+# Another environment
 apl get application --env FAT --format json
 ```
 
-## 修改配置
+## Changing configuration
 
 ```bash
-# 修改一个值（会显示确认提示；`--comment` 仅对新建 key 生效，更新已有 key 时会保留 Portal 上的备注）
+# Update a value (confirmation prompt; `--comment` applies when creating a new key only—existing keys keep Portal notes)
 apl set application timeout 5000 --yes
 
-# 新建 key 时可写备注（更新已有 key 时不要传 `--comment`，避免误以为会改备注）
+# New key with a comment (omit `--comment` when updating an existing key)
 apl set application new.feature.flag true --comment "rollout flag" --yes
 
-# 修改后发布使其生效
+# Publish so changes take effect
 apl publish application --title "update timeout"
 ```
 
-**PRO 环境保护**：所有写操作（`set` / `delete` / `publish`）在 PRO 环境下会被自动拦截，需要通过 Apollo Portal 操作。
+**Production (PRO) guard:** `set`, `delete`, and `publish` are blocked in PRO. Use Apollo Portal for writes in production.
 
-## 配置文件
+## Configuration file
 
-文件位置：项目根目录 `.apollo-cli.toml`
+Path: project root `.apollo-cli.toml`
 
 ```toml
 portal_url       = "http://apollo-portal.your-company.com"
@@ -143,116 +147,116 @@ default_operator = "your-domain-account"
 rate_limit_qps   = 10
 ```
 
-**配置优先级**：CLI 参数 > 环境变量 > 配置文件 > 默认值
+**Precedence:** CLI flags > environment variables > config file > defaults
 
-支持的环境变量：
+Environment variables:
 
+| Variable | Maps to |
+| --- | --- |
+| `APOLLO_PORTAL_URL` | `portal_url` |
+| `APOLLO_TOKEN` | `token` |
+| `APOLLO_ENV` | `default_env` |
+| `APOLLO_APP_ID` | `default_app_id` |
+| `APOLLO_CLUSTER` | `default_cluster` |
 
-| 环境变量                | 对应配置            |
-| ------------------- | --------------- |
-| `APOLLO_PORTAL_URL` | portal_url      |
-| `APOLLO_TOKEN`      | token           |
-| `APOLLO_ENV`        | default_env     |
-| `APOLLO_APP_ID`     | default_app_id  |
-| `APOLLO_CLUSTER`    | default_cluster |
+## Global options
 
-
-## 全局选项
-
-所有命令均支持以下全局选项：
+All commands accept:
 
 ```
---portal-url <URL>     覆盖 Portal 地址
---token <TOKEN>        覆盖认证 Token
---env <ENV>            覆盖环境（DEV/FAT/UAT/PRO）
---app-id <ID>          覆盖 AppId
---cluster <NAME>       覆盖集群名（默认 default）
---qps <N>              覆盖限流 QPS（默认 10）
---format <text|json>   输出格式（默认 text）
+--portal-url <URL>     Override Portal URL
+--token <TOKEN>        Override token
+--env <ENV>            Override environment (DEV/FAT/UAT/PRO)
+--app-id <ID>          Override AppId
+--cluster <NAME>       Override cluster (default: default)
+--qps <N>              Override client QPS (default: 10)
+--format <text|json>   Output format (default: text)
 ```
 
-## 限流
+## Rate limiting
 
-为保护企业 Apollo 服务，所有 HTTP 请求均受客户端限流约束（基于 [governor](https://crates.io/crates/governor) GCRA 算法）。
-
-默认 **10 QPS**，可通过以下方式调整：
+HTTP calls are client-side rate limited ([governor](https://crates.io/crates/governor), GCRA). Default **10 QPS**; adjust via:
 
 ```bash
-# 配置文件（.apollo-cli.toml）
+# Config file (.apollo-cli.toml)
 rate_limit_qps = 5
 
-# CLI 参数（优先级更高）
+# CLI (higher precedence)
 apl ns --qps 5
 
-# init 时指定
+# During init
 apl init --portal-url "..." --token "..." --app-id "..." --qps 5
 ```
 
-当请求频率超过限制时，CLI 会自动等待至下一个可用时间窗口再发送请求，无需用户干预。
+When over the limit, the CLI waits until the next window automatically.
 
-## 自动更新
+## Auto-update
 
-运行任何命令时，apl 会每 24 小时检查一次 GitHub Release，发现新版本会在命令输出后提示：
+About once every 24 hours, any command may check GitHub Releases and print a hint after output, for example:
 
 ```
 New version available: 0.2.0 -> 0.3.0 (run apl upgrade to upgrade)
 ```
 
-执行升级：
+Upgrade:
 
 ```bash
 apl upgrade
 ```
 
-会自动下载对应平台的最新二进制并替换当前可执行文件。
+Downloads the latest binary for your platform and replaces the current executable.
 
-## AI Agent 集成
+## AI agent integration
 
-配套 Skill 安装后位于 `~/.agents/skills/apl-cli/SKILL.md`，AI Agent 会在以下场景自动使用：
+With the Skill installed (`~/.agents/skills/apl-cli/SKILL.md`), agents typically use the CLI when:
 
-- 代码中遇到 `@Value("${...}")` 或 `@ApolloJsonValue` 需要实际值
-- 用户询问 Apollo 配置或动态配置
-- 分析代码逻辑需要了解运行时配置（特性开关、阈值、URL 等）
+- Code uses `@Value("${...}")` or `@ApolloJsonValue` and needs real values
+- You ask about Apollo or dynamic configuration
+- Analysis needs runtime settings (feature flags, thresholds, URLs, …)
 
-Agent 始终使用 `--format json` 获取结构化输出，并通过 `--keys` 只取需要的 key，避免上下文污染。
+Agents should prefer `--format json` and `--keys` to keep context small.
 
-## 发布新版本
+## Releasing
 
-推送 `v*` tag，GitHub Actions 自动编译 4 个平台 + 创建 Release：
+Push a `v*` tag; GitHub Actions builds four targets and creates a Release:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
+| Platform | Build |
+| --- | --- |
+| Linux x86_64 | ubuntu-latest, native |
+| Linux aarch64 | cross-compile |
+| macOS x86_64 (Intel) | macos-15-intel, native |
+| macOS aarch64 (Apple Silicon) | macos-latest, native |
 
-| 平台                            | 构建方式             |
-| ----------------------------- | ---------------- |
-| Linux x86_64                  | ubuntu-latest 原生 |
-| Linux aarch64                 | cross 交叉编译       |
-| macOS x86_64 (Intel)          | macos-15-intel 原生 |
-| macOS aarch64 (Apple Silicon) | macos-latest 原生  |
-
-
-## 项目结构
+## Repository layout
 
 ```
 apl-cli/
 ├── .github/workflows/
-│   └── release.yml     # CI: 打 tag → 编译 → 发 Release
+│   └── release.yml     # CI: tag → build → Release
 ├── Cargo.toml
-├── install.sh          # 一键安装脚本
+├── install.sh
+├── LICENSE
 ├── README.md
+├── README.zh-CN.md
 ├── skills/
 │   └── apl-cli/
-│       └── SKILL.md    # AI Agent Skill（源文件）
+│       └── SKILL.md    # Agent Skill (source)
 └── src/
-    ├── main.rs         # 入口
-    ├── cli.rs          # 命令行定义（clap derive）
-    ├── config.rs       # 配置文件加载与优先级合并
-    ├── client.rs       # Apollo Open API HTTP 客户端
-    ├── models.rs       # API 请求/响应模型
-    ├── output.rs       # 输出格式化（text 表格 / json）
-    ├── upgrade.rs      # 版本检查与自动升级
-    └── commands.rs     # 所有命令实现
+    ├── main.rs
+    ├── cli.rs
+    ├── config.rs
+    ├── client.rs
+    ├── models.rs
+    ├── output.rs
+    ├── upgrade.rs
+    └── commands.rs
 ```
+
+## License
+
+MIT. See [LICENSE](./LICENSE).
