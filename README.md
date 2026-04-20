@@ -117,11 +117,11 @@ apl get application --env FAT --format json
 ## 修改配置
 
 ```bash
-# 修改一个值（会显示确认提示）
-apl set application timeout 5000 --comment "increase timeout"
-
-# 跳过确认（脚本/AI 调用时使用）
+# 修改一个值（会显示确认提示；`--comment` 仅对新建 key 生效，更新已有 key 时会保留 Portal 上的备注）
 apl set application timeout 5000 --yes
+
+# 新建 key 时可写备注（更新已有 key 时不要传 `--comment`，避免误以为会改备注）
+apl set application new.feature.flag true --comment "rollout flag" --yes
 
 # 修改后发布使其生效
 apl publish application --title "update timeout"

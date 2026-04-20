@@ -1,6 +1,6 @@
 ---
 name: apl-cli
-version: 0.2.1
+version: 0.3.1
 description: Query, read, and modify Apollo configuration center values using the apl CLI. Use when code references @ApolloJsonValue, @ApolloConfig, @EnableApolloConfig, @ApolloConfigChangeListener, ConfigService, Config, or any Apollo-related annotation/class, or when the user mentions Apollo 配置, 配置中心, 开关, or wants to look up actual config values for code comprehension.
 ---
 
@@ -48,6 +48,10 @@ apl get <namespace> <key> --format json
 ### Set / update a value (non-PRO only)
 
 ```bash
+# Updating an existing key — do not pass `--comment` (CLI ignores it and keeps the portal remark)
+apl set <namespace> <key> "<value>" --yes
+
+# Creating a new key — optional `--comment` documents the item in Apollo
 apl set <namespace> <key> "<value>" --comment "reason" --yes
 ```
 
@@ -82,8 +86,9 @@ apl <command> --help  # subcommand help
 2. **Only fetch specific keys you need** — use `--keys k1,k2` to avoid flooding context.
 3. **PRO is read-only** — the CLI blocks all writes to PRO. Do not attempt `set` / `delete` / `publish` with `--env PRO`.
 4. **Confirm writes with user first** — before running `set` or `delete`, tell the user what you plan to change and get approval. Then pass `--yes` to skip the interactive prompt.
-5. **Publish after set** — `set` only stages the change. Remind the user to `publish` if they want it to take effect immediately.
-6. **Rate limiting is built-in** — default 10 QPS, configurable via `rate_limit_qps` in `.apollo-cli.toml` or `--qps` flag. No need to add external throttling.
+5. **Do not overwrite item remarks (备注)** — `--comment` on `apl set` applies **only when the key is new**. For existing keys, the CLI **never** applies your `--comment` to the item; it keeps the remark already stored in Apollo. Agents must **not** pass `--comment` when updating an existing key (it is ignored and would mislead readers of the command).
+6. **Publish after set** — `set` only stages the change. Remind the user to `publish` if they want it to take effect immediately.
+7. **Rate limiting is built-in** — default 10 QPS, configurable via `rate_limit_qps` in `.apollo-cli.toml` or `--qps` flag. No need to add external throttling.
 
 ## Typical Workflow
 
@@ -93,10 +98,17 @@ apl <command> --help  # subcommand help
 apl get application --keys trade.order.max.retry,ws.reconnect.interval --format json
 ```
 
-**Modifying a config value (after user approval):**
+**Modifying an existing config value (after user approval):**
 
 ```bash
 apl get application timeout --format json
-apl set application timeout "5000" --comment "increase timeout per user request" --yes
+apl set application timeout "5000" --yes
 apl publish application --title "update timeout" --yes
+```
+
+**Adding a new key (optional `--comment` for the new item only):**
+
+```bash
+apl set application feature.new.flag "true" --comment "rollout flag" --yes
+apl publish application --title "add feature flag" --yes
 ```

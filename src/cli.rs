@@ -94,7 +94,7 @@ pub enum Commands {
         key: String,
         /// Configuration value
         value: String,
-        /// Comment for the item
+        /// Comment for the item (only when creating a new key; ignored on update so the portal remark is preserved)
         #[arg(long)]
         comment: Option<String>,
         /// Operator (domain account)

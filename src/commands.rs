@@ -249,8 +249,23 @@ fn cmd_set(
         println!("  Old Value : {}", old.dimmed());
     }
     println!("  New Value : {}", value.green());
-    if let Some(ref c) = comment {
-        println!("  Comment   : {}", c);
+    if is_new {
+        if let Some(ref c) = comment {
+            println!("  Comment   : {}", c);
+        }
+    } else {
+        if comment.is_some() {
+            println!(
+                "  {}",
+                "Note: `--comment` applies only to new keys; existing item remark is preserved."
+                    .yellow()
+            );
+        }
+        if let Some(ref item) = existing {
+            if let Some(ref r) = item.comment {
+                println!("  Item remark (unchanged): {}", r.dimmed());
+            }
+        }
     }
     println!("  Operator  : {}", r.operator);
     println!();
@@ -260,10 +275,16 @@ fn cmd_set(
         return Ok(());
     }
 
+    let req_comment = if is_new {
+        comment
+    } else {
+        existing.as_ref().and_then(|e| e.comment.clone())
+    };
+
     let req = UpdateItemRequest {
         key: key.into(),
         value: value.into(),
-        comment,
+        comment: req_comment,
         data_change_last_modified_by: r.operator.clone(),
         data_change_created_by: Some(r.operator.clone()),
     };
