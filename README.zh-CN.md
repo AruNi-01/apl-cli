@@ -86,6 +86,7 @@ apl get application timeout
 
 ## 命令一览
 
+
 | 命令                           | 说明                         |
 | ---------------------------- | -------------------------- |
 | `apl init`                   | 生成 `.apollo-cli.toml` 配置文件 |
@@ -96,7 +97,8 @@ apl get application timeout
 | `apl set <ns> <key> <value>` | 创建或修改配置                    |
 | `apl delete <ns> <key>`      | 删除配置                       |
 | `apl publish <ns>`           | 发布 Namespace 变更            |
-| `apl upgrade`                | 升级到最新版本                   |
+| `apl upgrade`                | 升级到最新版本                    |
+
 
 ## 读取配置
 
@@ -151,6 +153,7 @@ rate_limit_qps   = 10
 
 支持的环境变量：
 
+
 | 环境变量                | 对应配置            |
 | ------------------- | --------------- |
 | `APOLLO_PORTAL_URL` | portal_url      |
@@ -158,6 +161,7 @@ rate_limit_qps   = 10
 | `APOLLO_ENV`        | default_env     |
 | `APOLLO_APP_ID`     | default_app_id  |
 | `APOLLO_CLUSTER`    | default_cluster |
+
 
 ## 全局选项
 
@@ -227,12 +231,14 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-| 平台                            | 构建方式             |
-| ----------------------------- | ---------------- |
-| Linux x86_64                  | ubuntu-latest 原生 |
-| Linux aarch64                 | cross 交叉编译       |
+
+| 平台                            | 构建方式              |
+| ----------------------------- | ----------------- |
+| Linux x86_64                  | ubuntu-latest 原生  |
+| Linux aarch64                 | cross 交叉编译        |
 | macOS x86_64 (Intel)          | macos-15-intel 原生 |
-| macOS aarch64 (Apple Silicon) | macos-latest 原生  |
+| macOS aarch64 (Apple Silicon) | macos-latest 原生   |
+
 
 ## 项目结构
 
