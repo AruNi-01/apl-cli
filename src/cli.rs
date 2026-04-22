@@ -22,6 +22,10 @@ pub struct Cli {
     #[arg(long, global = true, env = "APOLLO_APP_ID")]
     pub app_id: Option<String>,
 
+    /// Config profile: use [profiles.name] in .apollo-cli.toml (e.g. another app with its own Open API token)
+    #[arg(long, global = true, env = "APOLLO_PROFILE")]
+    pub profile: Option<String>,
+
     /// Cluster name
     #[arg(long, global = true, env = "APOLLO_CLUSTER")]
     pub cluster: Option<String>,
@@ -69,7 +73,10 @@ pub enum Commands {
     },
     /// Show current resolved configuration (optionally filter by field name)
     Show {
-        /// Config field to show (e.g. portal_url, token, env, app_id, cluster, operator, qps)
+        /// List profile names from .apollo-cli.toml (one per line, for checks)
+        #[arg(long, conflicts_with = "field")]
+        list_profiles: bool,
+        /// Config field to show (e.g. portal_url, token, env, app_id, cluster, operator, qps, profile)
         field: Option<String>,
     },
     /// List environments and clusters for the app

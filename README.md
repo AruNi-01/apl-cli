@@ -147,7 +147,23 @@ default_operator = "your-domain-account"
 rate_limit_qps   = 10
 ```
 
-**Precedence:** CLI flags > environment variables > config file > defaults
+**Profiles (another `app_id` and token):** add `[profiles.<name>]` for a second (or more) application when its Open API token differs or you routinely switch targets. Omitted fields in a profile **inherit** from the root. Example:
+
+```toml
+[profiles.shared-platform]
+default_app_id = "InfraApp"
+token            = "open-api-token-for-InfraApp"
+```
+
+```bash
+apl get application --profile shared-platform --format json
+apl show --profile shared-platform
+apl show --list-profiles
+```
+
+`apl init` only overwrites the **root** fields; any existing `profiles` entries are **kept**.
+
+**Precedence (per field):** (1) CLI flags, (2) environment variables, (3) merged file (root values with `[profiles.name]` overrides where set), (4) defaults. A profile only overrides fields it defines; the rest come from the root. Then `--token`, `--app-id`, `APOLLO_*`, etc. apply on top.
 
 Environment variables:
 
@@ -158,6 +174,7 @@ Environment variables:
 | `APOLLO_ENV` | `default_env` |
 | `APOLLO_APP_ID` | `default_app_id` |
 | `APOLLO_CLUSTER` | `default_cluster` |
+| `APOLLO_PROFILE` | active profile name (section `[profiles.…]`) |
 
 ## Global options
 
@@ -168,6 +185,7 @@ All commands accept:
 --token <TOKEN>        Override token
 --env <ENV>            Override environment (DEV/FAT/UAT/PRO)
 --app-id <ID>          Override AppId
+--profile <NAME>       Use [profiles.NAME] merge (or set APOLLO_PROFILE)
 --cluster <NAME>       Override cluster (default: default)
 --qps <N>              Override client QPS (default: 10)
 --format <text|json>   Output format (default: text)

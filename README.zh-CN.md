@@ -149,7 +149,23 @@ default_operator = "your-domain-account"
 rate_limit_qps   = 10
 ```
 
-**配置优先级**：CLI 参数 > 环境变量 > 配置文件 > 默认值
+**多应用 / 多 Token（Profile）**：若需访问**其他应用**的 namespace，且 Open API 令牌与当前项目不同，可在同文件内增加 `[profiles.名称]`；未写明的字段仍从**根配置**继承。示例：
+
+```toml
+[profiles.shared-platform]
+default_app_id = "InfraApp"
+token            = "在 Portal 中授权给该应用的 Open API token"
+```
+
+```bash
+apl get application --profile shared-platform --format json
+apl show --profile shared-platform
+apl show --list-profiles
+```
+
+`apl init` 只更新**根级**字段，已有的 `profiles` 段会**保留**。
+
+**配置优先级**（按字段）：（1）CLI 参数，（2）环境变量，（3）根配置经 `[profiles.名称]` 合并后的结果，（4）默认值。Profile 只覆盖其声明的键；再叠加 `--token`、`--app-id`、`APOLLO_*` 等。
 
 支持的环境变量：
 
@@ -161,6 +177,7 @@ rate_limit_qps   = 10
 | `APOLLO_ENV`        | default_env     |
 | `APOLLO_APP_ID`     | default_app_id  |
 | `APOLLO_CLUSTER`    | default_cluster |
+| `APOLLO_PROFILE`    | 当前 profile 名（对应 `[profiles.…]`） |
 
 
 ## 全局选项
@@ -172,6 +189,7 @@ rate_limit_qps   = 10
 --token <TOKEN>        覆盖认证 Token
 --env <ENV>            覆盖环境（DEV/FAT/UAT/PRO）
 --app-id <ID>          覆盖 AppId
+--profile <NAME>       使用 [profiles.NAME] 合并（或用 APOLLO_PROFILE）
 --cluster <NAME>       覆盖集群名（默认 default）
 --qps <N>              覆盖限流 QPS（默认 10）
 --format <text|json>   输出格式（默认 text）

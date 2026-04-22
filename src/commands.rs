@@ -22,7 +22,10 @@ pub fn execute(cli: Cli) -> Result<()> {
             qps,
         } => cmd_init(portal_url, token, env, app_id, cluster, operator, qps),
 
-        Commands::Show { ref field } => cmd_show(field.as_deref()),
+        Commands::Show {
+            list_profiles,
+            ref field,
+        } => cmd_show(&cli, field.as_deref(), list_profiles),
         Commands::Upgrade => return upgrade::cmd_upgrade(),
 
         Commands::Envs => {
@@ -99,15 +102,18 @@ fn cmd_init(
     operator: String,
     qps: u32,
 ) -> Result<()> {
-    let cfg = AplConfig {
-        portal_url: Some(portal_url),
-        token: Some(token),
-        default_env: Some(env),
-        default_app_id: Some(app_id),
-        default_cluster: Some(cluster),
-        default_operator: Some(operator),
-        rate_limit_qps: Some(qps),
+    let mut cfg = if AplConfig::exists() {
+        AplConfig::load()?
+    } else {
+        AplConfig::default()
     };
+    cfg.portal_url = Some(portal_url);
+    cfg.token = Some(token);
+    cfg.default_env = Some(env);
+    cfg.default_app_id = Some(app_id);
+    cfg.default_cluster = Some(cluster);
+    cfg.default_operator = Some(operator);
+    cfg.rate_limit_qps = Some(qps);
     cfg.save()?;
     let path = AplConfig::path();
     println!("{} {}", "Created".green().bold(), path.display());
@@ -116,7 +122,7 @@ fn cmd_init(
 
 // ── show ───────────────────────────────────────────────────────
 
-fn cmd_show(field: Option<&str>) -> Result<()> {
+fn cmd_show(cli: &Cli, field: Option<&str>, list_profiles: bool) -> Result<()> {
     if !AplConfig::exists() {
         println!(
             "{} .apollo-cli.toml not found in current directory.",
@@ -125,16 +131,31 @@ fn cmd_show(field: Option<&str>) -> Result<()> {
         println!("Run `apl init` to create one.");
         return Ok(());
     }
-    let cfg = AplConfig::load()?;
 
-    let fields: &[(&str, String)] = &[
-        ("portal_url", cfg.portal_url.as_deref().unwrap_or("(not set)").into()),
-        ("token",      mask_token(cfg.token.as_deref())),
-        ("env",        cfg.default_env.as_deref().unwrap_or("UAT").into()),
-        ("app_id",     cfg.default_app_id.as_deref().unwrap_or("(not set)").into()),
-        ("cluster",    cfg.default_cluster.as_deref().unwrap_or("default").into()),
-        ("operator",   cfg.default_operator.as_deref().unwrap_or("apollo").into()),
-        ("qps",        cfg.rate_limit_qps.unwrap_or(10).to_string()),
+    if list_profiles {
+        let cfg = AplConfig::load()?;
+        for n in cfg.profile_names() {
+            println!("{n}");
+        }
+        return Ok(());
+    }
+
+    let r = resolve(cli, None)?;
+    let prof = r
+        .active_profile
+        .as_deref()
+        .unwrap_or("(none)")
+        .to_string();
+
+    let fields: Vec<(&str, String)> = vec![
+        ("profile", prof),
+        ("portal_url", r.portal_url.clone()),
+        ("token", mask_token(Some(&r.token))),
+        ("env", r.env.clone()),
+        ("app_id", r.app_id.clone()),
+        ("cluster", r.cluster.clone()),
+        ("operator", r.operator.clone()),
+        ("qps", r.rate_limit_qps.to_string()),
     ];
 
     if let Some(name) = field {
@@ -146,8 +167,8 @@ fn cmd_show(field: Option<&str>) -> Result<()> {
             ),
         }
     } else {
-        println!("{}", "Current configuration:".bold());
-        for (k, v) in fields {
+        println!("{}", "Current configuration (resolved):".bold());
+        for (k, v) in &fields {
             println!("  {:<10} : {v}", k);
         }
     }
@@ -242,6 +263,9 @@ fn cmd_set(
         println!("  {} configuration", "UPDATE".yellow().bold());
     }
     println!("  Env       : {}", r.env);
+    if let Some(ref p) = r.active_profile {
+        println!("  Profile   : {}", p.cyan());
+    }
     println!("  App       : {}", r.app_id);
     println!("  Namespace : {}", ns);
     println!("  Key       : {}", key);
@@ -316,6 +340,9 @@ fn cmd_delete(
     println!();
     println!("  {} configuration", "DELETE".red().bold());
     println!("  Env       : {}", r.env);
+    if let Some(ref p) = r.active_profile {
+        println!("  Profile   : {}", p.cyan());
+    }
     println!("  App       : {}", r.app_id);
     println!("  Namespace : {}", ns);
     println!("  Key       : {}", key);
@@ -354,6 +381,9 @@ fn cmd_publish(
     println!();
     println!("  {} namespace", "PUBLISH".cyan().bold());
     println!("  Env       : {}", r.env);
+    if let Some(ref p) = r.active_profile {
+        println!("  Profile   : {}", p.cyan());
+    }
     println!("  App       : {}", r.app_id);
     println!("  Namespace : {}", ns);
     println!("  Title     : {}", release_title);
@@ -386,6 +416,7 @@ fn chrono_free_title() -> String {
 
 fn resolve(cli: &Cli, operator: Option<&str>) -> Result<Resolved> {
     Resolved::from_cli(
+        cli.profile.as_deref(),
         cli.portal_url.as_deref(),
         cli.token.as_deref(),
         cli.env.as_deref(),
